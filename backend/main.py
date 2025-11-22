@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fetch_jobs import fetch_jobs_from_adzuna
 from database import save_jobs_to_db, get_jobs_from_db, create_tables
-
+from etl import process_jobs
 
 app = FastAPI(title="Job Analyzer API")
 
@@ -197,16 +197,34 @@ def get_remote_jobs(keyword: str = None, limit: int = 10):
 @app.post("/refresh")
 def refresh_jobs(keyword: str = "data", location: str = "us", results: int = 50):
     """
-    Fetch fresh jobs from Adzuna and save to database
+    Fetch, clean, transform, and save jobs to database
     """
-    # Fetch from Adzuna
-    jobs = fetch_jobs_from_adzuna(keyword, location, results)
+    # Step 1: Fetch from Adzuna
+    raw_jobs = fetch_jobs_from_adzuna(keyword, location, results)
     
-    # Save to PostgreSQL
-    saved_count = save_jobs_to_db(jobs)
+    # DEBUG: Print raw job sample
+    if raw_jobs:
+        print("=" * 80)
+        print("RAW JOB SAMPLE (from Adzuna):")
+        print(raw_jobs[0])
+        print("=" * 80)
+    
+    # Step 2: ETL - Clean and transform
+    cleaned_jobs = process_jobs(raw_jobs)
+    
+    # DEBUG: Print cleaned job sample
+    if cleaned_jobs:
+        print("=" * 80)
+        print("CLEANED JOB SAMPLE (after ETL):")
+        print(cleaned_jobs[0])
+        print("=" * 80)
+    
+    # Step 3: Save to PostgreSQL
+    saved_count = save_jobs_to_db(cleaned_jobs)
     
     return {
-        "message": "Jobs refreshed successfully",
-        "fetched": len(jobs),
+        "message": "Jobs refreshed with ETL processing",
+        "fetched": len(raw_jobs),
+        "cleaned": len(cleaned_jobs),
         "saved": saved_count
     }

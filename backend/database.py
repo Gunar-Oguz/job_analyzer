@@ -46,7 +46,11 @@ def create_tables():
                 location VARCHAR(255),
                 salary_min INTEGER,
                 salary_max INTEGER,
+                salary_avg INTEGER,
                 description TEXT,
+                skills TEXT,
+                skills_count INTEGER,
+                original_url TEXT,
                 created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -63,7 +67,7 @@ def create_tables():
 
 def save_jobs_to_db(jobs):
     """
-    Save fetched jobs to PostgreSQL database
+    Save cleaned jobs to PostgreSQL database
     """
     conn = get_db_connection()
     if not conn:
@@ -75,18 +79,38 @@ def save_jobs_to_db(jobs):
         
         for job in jobs:
             try:
+                # Convert skills list to comma-separated string
+                skills = job.get('skills', [])
+                if isinstance(skills, list):
+                    skills_str = ','.join(str(s) for s in skills)
+                else:
+                    skills_str = str(skills)
+                
+                # Ensure all values are strings or integers (not dicts)
+                job_id = str(job.get("id", ""))
+                title = str(job.get("title", ""))
+                company = str(job.get("company", "Unknown"))
+                location = str(job.get("location", "Unknown"))
+                description = str(job.get("description", ""))
+                original_url = str(job.get("original_url", ""))
+                
                 cur.execute("""
-                    INSERT INTO jobs (id, title, company, location, salary_min, salary_max, description)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO jobs (id, title, company, location, salary_min, salary_max, 
+                                    salary_avg, description, skills, skills_count, original_url)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO NOTHING
                 """, (
-                    job.get("id"),
-                    job.get("title"),
-                    job.get("company", {}).get("display_name"),
-                    job.get("location", {}).get("display_name"),
+                    job_id,
+                    title,
+                    company,
+                    location,
                     job.get("salary_min"),
                     job.get("salary_max"),
-                    job.get("description")
+                    job.get("salary_avg"),
+                    description,
+                    skills_str,
+                    job.get("skills_count", 0),
+                    original_url
                 ))
                 saved_count += 1
             except Exception as e:
