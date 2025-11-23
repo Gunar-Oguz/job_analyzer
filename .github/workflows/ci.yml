@@ -1,0 +1,46 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+    
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        pip install -r requirements.txt
+    
+    - name: Lint Python code
+      run: |
+        pip install flake8
+        flake8 backend --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 frontend --count --select=E9,F63,F7,F82 --show-source --statistics
+    
+    - name: Build Docker images
+      run: |
+        cd docker
+        docker build -f Dockerfile.backend -t job-analyzer-backend:latest ..
+        docker build -f Dockerfile.frontend -t job-analyzer-frontend:latest ..
+    
+    - name: Test Docker images
+      run: |
+        docker images | grep job-analyzer
