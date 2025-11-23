@@ -8,11 +8,11 @@ load_dotenv()
 
 # Database configuration
 DATABASE_CONFIG = {
-    "host": "localhost",
-    "database": "job_analyzer",
-    "user": os.getenv("POSTGRES_USER", "gulnaralbushova"),
-    "password": os.getenv("POSTGRES_PASSWORD", ""),
-    "port": 5432
+    "host": os.getenv("POSTGRES_HOST", "localhost"),
+    "database": os.getenv("POSTGRES_DB", "job_analyzer"),
+    "user": os.getenv("POSTGRES_USER", "postgres"),
+    "password": os.getenv("POSTGRES_PASSWORD", "postgres"),
+    "port": int(os.getenv("POSTGRES_PORT", "5432"))
 }
 
 def get_db_connection():
