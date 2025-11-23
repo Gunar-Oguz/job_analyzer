@@ -39,3 +39,17 @@ uv pip install --system --break-system-packages requests python-dotenv
 touch fetch_jobs.py
 
 uvicorn main:app --reload
+
+brew install postgresql@14
+
+brew services start postgresql@14
+
+createdb job_analyzer
+
+uv pip install --system --break-system-packages psycopg2-binary
+
+touch database.py
+
+
+
+
