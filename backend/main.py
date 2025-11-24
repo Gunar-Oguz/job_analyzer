@@ -3,6 +3,7 @@ from fetch_jobs import fetch_jobs_from_adzuna
 from database import save_jobs_to_db, get_jobs_from_db, create_tables
 from etl import process_jobs
 from logger import logger
+from ml_models.predict import predict_salary, get_model_stats
 
 app = FastAPI(title="Job Analyzer API")
 
@@ -254,3 +255,42 @@ def refresh_jobs(keyword: str = "data", location: str = "us", results: int = 50)
     except Exception as e:
         logger.error(f"Error refreshing jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error refreshing jobs: {str(e)}")
+
+
+@app.post("/ml/predict-salary")
+def predict_job_salary(title: str, location: str, company: str = "Unknown"):
+    """
+    Predict salary for a job using ML model
+    """
+    try:
+        logger.info(f"Predicting salary for: {title} at {company} in {location}")
+        result = predict_salary(title, location, company)
+        
+        if "error" in result:
+            logger.error(f"Prediction error: {result['error']}")
+            raise HTTPException(status_code=400, detail=result['error'])
+        
+        logger.info(f"Predicted salary: ${result['predicted_salary']:,.2f}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in salary prediction: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
+
+@app.get("/ml/salary-model-stats")
+def get_salary_model_info():
+    """
+    Get information about the trained ML model
+    """
+    try:
+        logger.info("Fetching ML model statistics")
+        stats = get_model_stats()
+        
+        if "error" in stats:
+            logger.error(f"Model stats error: {stats['error']}")
+            raise HTTPException(status_code=500, detail=stats['error'])
+        
+        return stats
+    except Exception as e:
+        logger.error(f"Error fetching model stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
