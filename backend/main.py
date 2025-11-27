@@ -4,6 +4,7 @@ from database import save_jobs_to_db, get_jobs_from_db, create_tables
 from etl import process_jobs
 from logger import logger
 from ml_models.predict import predict_salary, get_model_stats
+from ml_models.predict_category import predict_job_category
 
 app = FastAPI(title="Job Analyzer API")
 
@@ -294,3 +295,22 @@ def get_salary_model_info():
     except Exception as e:
         logger.error(f"Error fetching model stats: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
+@app.post("/ml/classify-job")
+def classify_job(title: str, description: str = ""):
+    """
+    Predict job category using ML model
+    """
+    try:
+        logger.info(f"Classifying job: {title}")
+        result = predict_job_category(title, description)
+        
+        if "error" in result:
+            logger.error(f"Classification error: {result['error']}")
+            raise HTTPException(status_code=400, detail=result['error'])
+        
+        logger.info(f"Predicted category: {result['predicted_category']}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in classification: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Classification failed: {str(e)}")
