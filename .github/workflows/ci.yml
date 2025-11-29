@@ -131,17 +131,7 @@ jobs:
             docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_backend:latest
             docker stop job_analyzer_backend || true
             docker rm job_analyzer_backend || true
-            docker run -d --name job_analyzer_backend \
-              --network job_network \
-              -p 8000:8000 \
-              -e POSTGRES_HOST=job_analyzer_db \
-              -e POSTGRES_USER=postgres \
-              -e POSTGRES_PASSWORD=postgres \
-              -e POSTGRES_DB=job_analyzer \
-              -e POSTGRES_PORT=5432 \
-              -e ADZUNA_APP_ID=${{ secrets.ADZUNA_APP_ID }} \
-              -e ADZUNA_API_KEY=${{ secrets.ADZUNA_API_KEY }} \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_backend:latest
+            docker run -d --name job_analyzer_backend --network job_network -p 8000:8000 -e POSTGRES_HOST=job_analyzer_db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=job_analyzer -e POSTGRES_PORT=5432 -e ADZUNA_APP_ID=${{ secrets.ADZUNA_APP_ID }} -e ADZUNA_API_KEY=${{ secrets.ADZUNA_API_KEY }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_backend:latest
 
   # ========== DEPLOY FRONTEND TO EC2 ==========
   deploy-frontend-ec2:
@@ -159,8 +149,4 @@ jobs:
             docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_frontend:latest
             docker stop job_analyzer_frontend || true
             docker rm job_analyzer_frontend || true
-            docker run -d --name job_analyzer_frontend \
-              --network job_network \
-              -p 8501:8501 \
-              -e BACKEND_URL=http://job_analyzer_backend:8000 \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_frontend:latest
+            docker run -d --name job_analyzer_frontend --network job_network -p 8501:8501 -e BACKEND_URL=http://job_analyzer_backend:8000 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_frontend:latest
