@@ -1,11 +1,9 @@
 name: CI/CD Pipeline
-
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
@@ -23,6 +21,12 @@ jobs:
       run: |
         cd backend
         pip install -r requirements.txt
+        pip install httpx pytest
+    
+    - name: Run unit tests
+      run: |
+        cd backend
+        pytest tests/ -v
     
     - name: Install frontend dependencies
       run: |
@@ -40,7 +44,3 @@ jobs:
         cd docker
         docker build -f Dockerfile.backend -t job-analyzer-backend:latest ..
         docker build -f Dockerfile.frontend -t job-analyzer-frontend:latest ..
-    
-    - name: Test Docker images
-      run: |
-        docker images | grep job-analyzer

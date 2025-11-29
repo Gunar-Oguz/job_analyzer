@@ -4,6 +4,18 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+
+# Initialize session state for bookmarks
+if 'bookmarks' not in st.session_state:
+    st.session_state.bookmarks = []
+
+def toggle_bookmark(job):
+    job_id = job.get('id') or job.get('title')
+    bookmarked_ids = [j.get('id') or j.get('title') for j in st.session_state.bookmarks]
+    if job_id in bookmarked_ids:
+        st.session_state.bookmarks = [j for j in st.session_state.bookmarks if (j.get('id') or j.get('title')) != job_id]
+    else:
+        st.session_state.bookmarks.append(job)
 # API Configuration
 API_BASE_URL = "http://localhost:8000"
 
@@ -52,7 +64,7 @@ limit = st.sidebar.slider("Number of Results", min_value=5, max_value=50, value=
 search_button = st.sidebar.button("🔍 Search Jobs", type="primary")
 
 # Main Content Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📋 Job Listings", "📊 Skills Analysis", "💰 Salary Stats", "🏢 Top Companies"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Job Listings", "📊 Skills Analysis", "💰 Salary Stats", "🏢 Top Companies", "⭐ Bookmarks"])
 
 # Tab 1: Job Listings
 with tab1:
@@ -212,6 +224,19 @@ with tab4:
     else:
         st.info("👈 Click 'Search Jobs' to see top companies")
 
+# Tab 5: Bookmarks
+with tab5:
+    if st.session_state.bookmarks:
+        st.success(f"You have {len(st.session_state.bookmarks)} bookmarked jobs")
+        for job in st.session_state.bookmarks:
+            with st.expander(f"⭐ {job.get('title', 'N/A')} - {job.get('company', 'N/A')}"):
+                st.write(f"**Location:** {job.get('location', 'N/A')}")
+                st.write(f"**Description:** {job.get('description', 'N/A')[:200]}...")
+                if st.button("Remove Bookmark", key=f"remove_{job.get('id') or job.get('title')}"):
+                    toggle_bookmark(job)
+                    st.rerun()
+    else:
+        st.info("No bookmarked jobs yet. Click ⭐ on any job to bookmark it.")
 # Footer
 st.markdown("---")
 st.markdown("**Job Market Analyzer** | Built with Streamlit & FastAPI")

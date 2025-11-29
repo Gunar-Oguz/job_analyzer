@@ -5,6 +5,8 @@ from etl import process_jobs
 from logger import logger
 from ml_models.predict import predict_salary, get_model_stats
 from ml_models.predict_category import predict_job_category
+from ml_models.skill_recommender import get_skill_recommendations
+from ml_models.market_analyzer import analyze_market
 
 app = FastAPI(title="Job Analyzer API")
 
@@ -314,3 +316,41 @@ def classify_job(title: str, description: str = ""):
     except Exception as e:
         logger.error(f"Error in classification: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Classification failed: {str(e)}")
+    
+@app.get("/ml/recommend-skills")
+def recommend_skills(target_role: str = "data scientist", top_n: int = 10):
+    """
+    Recommend skills to learn for a target job role
+    """
+    try:
+        logger.info(f"Getting skill recommendations for: {target_role}")
+        result = get_skill_recommendations(target_role, top_n)
+        
+        if "error" in result:
+            logger.error(f"Recommendation error: {result['error']}")
+            raise HTTPException(status_code=400, detail=result['error'])
+        
+        logger.info(f"Found {len(result['recommended_skills'])} skills")
+        return result
+    except Exception as e:
+        logger.error(f"Error in skill recommendations: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Recommendation failed: {str(e)}")
+    
+@app.get("/ml/market-analysis")
+def get_market_analysis(keyword: str = "data scientist"):
+    """
+    Analyze job market for a given role
+    """
+    try:
+        logger.info(f"Analyzing market for: {keyword}")
+        result = analyze_market(keyword)
+        
+        if "error" in result:
+            logger.error(f"Market analysis error: {result['error']}")
+            raise HTTPException(status_code=400, detail=result['error'])
+        
+        logger.info(f"Market analysis complete: {result['total_jobs']} jobs found")
+        return result
+    except Exception as e:
+        logger.error(f"Error in market analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
