@@ -151,4 +151,4 @@ jobs:
             docker pull $IMAGE
             docker stop job_analyzer_frontend || true
             docker rm job_analyzer_frontend || true
-            docker run -d --name job_analyzer_frontend --network job_network -p 8501:8501 $IMAGE
+            docker run -d --name job_analyzer_frontend --network job_network -p 8501:8501 -e BACKEND_URL=http://job_analyzer_backend:8000 $IMAGE
