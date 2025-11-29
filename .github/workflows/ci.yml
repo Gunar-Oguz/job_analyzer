@@ -1,82 +1,167 @@
-name: CI/CD Pipeline
+name: Build and Deploy Job Analyzer
+
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  EC2_HOST: ${{ secrets.EC2_HOST }}
 
 jobs:
-  test:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies and test
-      run: |
-        cd backend
-        pip install -r requirements.txt
-        pip install httpx pytest
-        pytest tests/ -v
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  build-and-push:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
-    
-    - name: Login to Amazon ECR
-      uses: aws-actions/amazon-ecr-login@v2
-    
-    - name: Build and push Docker images
-      run: |
-        # Build images
-        cd docker
-        docker build -f Dockerfile.backend -t job-analyzer-backend:latest ..
-        docker build -f Dockerfile.frontend -t job-analyzer-frontend:latest ..
-        
-        # Push to Docker Hub
-        docker tag job-analyzer-backend:latest ${{ secrets.DOCKER_USERNAME }}/job-analyzer-backend:latest
-        docker tag job-analyzer-frontend:latest ${{ secrets.DOCKER_USERNAME }}/job-analyzer-frontend:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/job-analyzer-backend:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/job-analyzer-frontend:latest
+      # AWS Authentication
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-  deploy:
-    needs: build-and-push
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+  # ========== BUILD & PUSH BACKEND TO AWS ECR ==========
+  build-push-backend-ecr:
+    needs: build-and-deploy
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          cd ~/job_analyzer
-          git pull origin main
-          cd docker
-          docker-compose down
-          docker-compose up -d --build
-          echo "Deployment complete!"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Backend to ECR
+        run: |
+          docker build -t job_analyzer_backend -f docker/Dockerfile.backend .
+          docker tag job_analyzer_backend:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_backend:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_backend:latest
+
+  # ========== BUILD & PUSH FRONTEND TO AWS ECR ==========
+  build-push-frontend-ecr:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Frontend to ECR
+        run: |
+          docker build -t job_analyzer_frontend -f docker/Dockerfile.frontend .
+          docker tag job_analyzer_frontend:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_frontend:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_frontend:latest
+
+  # ========== BUILD & PUSH BACKEND TO DOCKER HUB ==========
+  build-push-backend-dockerhub:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Backend to Docker Hub
+        run: |
+          docker build -t job_analyzer_backend -f docker/Dockerfile.backend .
+          docker tag job_analyzer_backend:latest ${{ secrets.DOCKERHUB_USERNAME }}/job_analyzer_backend:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/job_analyzer_backend:latest
+
+  # ========== BUILD & PUSH FRONTEND TO DOCKER HUB ==========
+  build-push-frontend-dockerhub:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Frontend to Docker Hub
+        run: |
+          docker build -t job_analyzer_frontend -f docker/Dockerfile.frontend .
+          docker tag job_analyzer_frontend:latest ${{ secrets.DOCKERHUB_USERNAME }}/job_analyzer_frontend:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/job_analyzer_frontend:latest
+
+  # ========== DEPLOY BACKEND TO EC2 ==========
+  deploy-backend-ec2:
+    needs: build-push-backend-ecr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Backend to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_backend:latest
+            docker stop job_analyzer_backend || true
+            docker rm job_analyzer_backend || true
+            docker run -d --name job_analyzer_backend \
+              --network job_network \
+              -p 8000:8000 \
+              -e POSTGRES_HOST=job_analyzer_db \
+              -e POSTGRES_USER=postgres \
+              -e POSTGRES_PASSWORD=postgres \
+              -e POSTGRES_DB=job_analyzer \
+              -e POSTGRES_PORT=5432 \
+              -e ADZUNA_APP_ID=${{ secrets.ADZUNA_APP_ID }} \
+              -e ADZUNA_API_KEY=${{ secrets.ADZUNA_API_KEY }} \
+              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_backend:latest
+
+  # ========== DEPLOY FRONTEND TO EC2 ==========
+  deploy-frontend-ec2:
+    needs: build-push-frontend-ecr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Frontend to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_frontend:latest
+            docker stop job_analyzer_frontend || true
+            docker rm job_analyzer_frontend || true
+            docker run -d --name job_analyzer_frontend \
+              --network job_network \
+              -p 8501:8501 \
+              -e BACKEND_URL=http://job_analyzer_backend:8000 \
+              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/job_analyzer_frontend:latest
