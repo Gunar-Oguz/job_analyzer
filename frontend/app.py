@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import os
 
 
 # Initialize session state for bookmarks
@@ -17,7 +18,8 @@ def toggle_bookmark(job):
     else:
         st.session_state.bookmarks.append(job)
 # API Configuration
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
 
 # Page Config
 st.set_page_config(
