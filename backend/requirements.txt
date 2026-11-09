@@ -1,8 +1,8 @@
-fastapi
-uvicorn[standard]
-requests
-python-dotenv
-psycopg2-binary
-scikit-learn
-pandas
-
+# FastAPI backend (Docker image). The core needs the same libraries as the app.
+fastapi==0.162.2
+uvicorn[standard]==0.54.0
+psycopg2-binary==2.9.13
+pandas==2.3.3
+numpy==2.4.6
+scikit-learn==1.9.1
+requests==2.34.2
