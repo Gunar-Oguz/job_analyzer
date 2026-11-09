@@ -1,0 +1,18 @@
+[project]
+name = "job-analyzer"
+version = "2.0.0"
+description = "Live remote-job market analytics and ML (Streamlit + FastAPI + PostgreSQL)"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "N"]
+ignore = ["N803", "N806"]  # X / X_train are the usual scikit-learn names
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning:streamlit.*"]
