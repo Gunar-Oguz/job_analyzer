@@ -1,56 +1,52 @@
-version: '3.8'
+# Full stack: PostgreSQL + FastAPI backend + Streamlit frontend.
+#   docker compose -f docker/docker-compose.yml up --build
+# Then open http://localhost:8501 (UI) and http://localhost:8000/docs (API).
+# Set POSTGRES_PASSWORD in your shell or a .env file to override the local default.
 
 services:
   postgres:
-    image: postgres:14
-    container_name: job_analyzer_db
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only}
       POSTGRES_DB: job_analyzer
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d job_analyzer"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   backend:
     build:
       context: ..
       dockerfile: docker/Dockerfile.backend
-    container_name: job_analyzer_backend
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_PORT: "5432"
       POSTGRES_DB: job_analyzer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only}
+      REFRESH_ON_STARTUP: "true"   # fetch jobs in the background when the database is empty
+      REFRESH_PAGES: "50"
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ../backend:/app
 
   frontend:
     build:
       context: ..
       dockerfile: docker/Dockerfile.frontend
-    container_name: job_analyzer_frontend
+    environment:
+      BACKEND_URL: http://backend:8000
     ports:
       - "8501:8501"
     depends_on:
-      - backend
-    volumes:
-      - ../frontend:/app
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
-
-
-

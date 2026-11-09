@@ -1,41 +1,40 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
+*.egg-info/
 .venv/
+venv/
+env/
 
-# Environment variables
-.env
-.env.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-logs/
-*.log
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Testing
+# Tooling caches
 .pytest_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 
-# Docker
-*.dockerfile
+# Secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Job data must never be committed (Himalayas terms: no redistribution)
+data/
+*.parquet
+*.csv
+*.jsonl
+raw*.json
+jobs*.json
+
+# Models are trained at runtime from fresh data
+*.pkl
+*.joblib
+
+# Logs, OS and IDE files
+logs/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
 docker-compose.override.yml
